@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ASM Code Generator</title>
+<meta name="theme-color" content="#100d09">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ASM Codes">
+<link rel="apple-touch-icon" href="logo-spartiate.png">
+<link rel="icon" href="build/asm-code-generator.ico" sizes="any">
+<style>
+:root{color-scheme:dark;--gold:#efc66e;--border:#735a35;--ink:#f5e8cc;--muted:#c7bda8}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:14px;background:transparent;color:var(--ink);font:16px system-ui,sans-serif}
+main{width:min(100%,820px);background:linear-gradient(145deg,#2c2319,#100d09 66%);border:1px solid var(--border);border-radius:20px;padding:clamp(14px,3vw,28px);box-shadow:0 18px 52px #0007}
+header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;border-bottom:1px solid var(--border);padding-bottom:14px}
+header img{width:clamp(96px,16vw,132px);height:clamp(96px,16vw,132px);object-fit:contain;display:block;filter:drop-shadow(0 3px 10px #d8a54432)}h1{font:700 clamp(20px,4vw,31px) Georgia,serif;margin:0 0 4px;color:var(--gold)}small{color:var(--muted);letter-spacing:2px}
+h2{font-size:17px;margin:0}p{margin:0}.layout{display:grid;grid-template-columns:5fr 6fr;gap:14px;margin-top:16px}
+section{min-width:0;background:#1c1710;border:1px solid #695331;border-radius:13px;padding:14px}.hint,time{font-size:13px;color:var(--muted)}.hint{margin:8px 0 14px}
+output{display:block;text-align:center;background:#100c08;border:1px solid var(--border);border-radius:9px;color:var(--gold);padding:12px 4px;font:700 clamp(19px,4vw,27px) Consolas,monospace;letter-spacing:1px}
+label{display:block;font-size:14px;margin:12px 0 5px}textarea{width:100%;min-height:62px;resize:vertical;background:#201911;border:1px solid var(--border);border-radius:8px;color:inherit;font:inherit;padding:8px}
+.actions,.heading,.entry-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.actions{margin-top:10px}.heading,.entry-top{justify-content:space-between}
+button{cursor:pointer;border:1px solid #edc47a;border-radius:8px;background:linear-gradient(#f4d48e,#b7822e);color:#171007;font:700 14px system-ui;padding:9px 11px}button.secondary{background:#2c2318;color:var(--gold);border-color:var(--border)}button:disabled{opacity:.45;cursor:default}:focus-visible{outline:2px solid #ffd691;outline-offset:2px}
+#status{min-height:1.4em;font-size:13px;margin-top:8px;color:var(--muted)}#history{max-height:285px;overflow:auto;overscroll-behavior:contain;margin-top:10px;padding-right:4px}.entry{background:linear-gradient(140deg,#332518,#18120c);border:1px solid var(--border);border-radius:11px;padding:11px;margin-bottom:8px}.entry:last-child{margin-bottom:0}.entry code{font-size:17px;color:var(--gold)}.entry time{display:block;margin-top:5px}.entry-note{margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}.entry .actions{margin-top:8px}.entry .delete{color:#ffcfb0;border-color:#995c38;background:#351d12}
+@media (max-width:620px) {
+  body {
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+             max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  main { width: min(100%, 460px); padding: 12px; border-radius: 16px; }
+  header { gap: 4px; padding-bottom: 8px; }
+  header img { width: clamp(92px, 27vw, 120px); height: clamp(92px, 27vw, 120px); }
+  header h1 { font-size: 23px; }
+  header small { font-size: 11px; }
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 9px; margin-top: 9px; }
+  section { padding: 10px; }
+  .hint { margin: 4px 0 8px; }
+  output { padding: 8px 4px; font-size: 24px; }
+  label { margin-top: 8px; }
+  textarea { display: block; min-height: 54px; resize: none; font-size: 16px; }
+  button { min-height: 44px; touch-action: manipulation; }
+  .actions { margin-top: 7px; }
+  .actions button { flex: 1; }
+  #status { margin-top: 5px; }
+  #status textarea { min-height: 36px; }
+  #history { max-height: 260px; margin-top: 6px; }
+  .entry { padding: 10px; }
+}
+@media (max-width:620px) and (min-height:650px) {
+  body { height: 100vh; height: 100dvh; }
+  main { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  header { flex: none; }
+  .layout { flex: 1; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+  .layout > section:last-child { display: flex; flex-direction: column; min-height: 0; }
+  .layout > section:last-child > .heading,
+  .layout > section:last-child > .hint { flex: none; }
+  #history { flex: 1; min-height: 0; max-height: none; }
+}
+@media (orientation:landscape) and (max-height:520px) and (pointer:coarse) {
+  body {
+    padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+             max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  main { width: min(100%, 820px); padding: 8px 12px; }
+  header { flex-direction: row; justify-content: center; gap: 8px; padding-bottom: 5px; }
+  header img { width: 52px; height: 52px; }
+  header h1 { font-size: 20px; }
+  header small { display: none; }
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+  section { padding: 8px; }
+  .hint { margin: 3px 0 6px; }
+  output { padding: 5px; font-size: 21px; }
+  label { margin-top: 6px; }
+  textarea { display: block; min-height: 40px; height: 40px; resize: none; font-size: 16px; }
+  button { min-height: 44px; touch-action: manipulation; }
+  .actions { margin-top: 6px; }
+  #status { margin-top: 3px; }
+  #history { max-height: 147px; max-height: clamp(96px, calc(100dvh - 156px), 180px); margin-top: 4px; }
+}
+.manual-row { display: flex; gap: 7px; }
+.manual-row textarea { flex: 1; min-height: 44px; resize: vertical; min-width: 0; background: #201911; border: 1px solid var(--border); border-radius: 8px; color: inherit; font: 16px Consolas, monospace; padding: 8px; }
+#manual-error { margin-top: 5px; font-size: 13px; color: #ffcfb0; }
+#manual-error:empty { display: none; }
+output, .entry code { overflow-wrap: anywhere; }
+#manual-form { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 3px; }
+main {
+  width: min(100%, 428px);
+  height: min(926px, calc(100vh - 28px));
+  height: min(926px, calc(100dvh - 28px));
+  display: flex;
+  flex-direction: column;
+}
+header, #status, .mobile-nav { flex: none; }
+.layout { flex: 1; min-height: 0; overflow: auto; }
+.layout > [data-panel="generator"] { align-self: start; }
+.layout > [data-panel="history"] { display: flex; flex-direction: column; min-height: 0; }
+[data-panel="history"] > .heading { flex: none; }
+#history { flex: 1; min-height: 0; max-height: none; }
+.layout { display: flex; }
+.layout > section { flex: 1; }
+main[data-screen="generator"] [data-panel="history"],
+main[data-screen="history"] [data-panel="generator"],
+main[data-mode="automatic"] [data-mode-panel="manual"],
+main[data-mode="manual"] [data-mode-panel="automatic"] { display: none; }
+.mode-nav { display: flex; gap: 8px; margin: 10px 0 14px; }
+.mode-nav button { flex: 1; }
+.mode-nav button[aria-pressed="true"] { background: #302215; border-color: var(--gold); color: var(--gold); }
+.mobile-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.mobile-nav button { min-height: 44px; background: #2c2318; border-color: var(--border); color: var(--muted); }
+.mobile-nav button[aria-current="true"] { background: #302215; border-color: var(--gold); color: var(--gold); }
+[data-mode-panel="automatic"] output { margin-top: 12px; }
+#manual-form { border-top: 0; margin-top: 8px; padding-top: 0; }
+@media (max-width: 620px) {
+  body { background: #100d09; padding: 0; align-items: start; }
+  main {
+    width: min(100%, 428px);
+    height: min(926px, 100vh);
+    height: min(926px, 100dvh);
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+             0 max(14px, env(safe-area-inset-left));
+    display: flex;
+    flex-direction: column;
+  }
+  header { gap: 6px; padding-bottom: 14px; }
+  .layout { display: flex; flex: 1; gap: 0; min-height: 0; margin-top: 12px; }
+  .layout > section { flex: 1; padding: 14px; align-self: start; }
+  .layout > [data-panel="history"] { align-self: stretch; }
+  #history { max-height: none; }
+  #status { flex: none; margin: 7px 0; }
+  .mobile-nav {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 0 max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: #120e09;
+  }
+  .mobile-nav button { background: transparent; border-color: transparent; color: var(--muted); }
+  .mobile-nav button[aria-current="true"] { background: #302215; border-color: var(--border); color: var(--gold); }
+}
+@media (max-height: 520px) {
+  header img { width: 52px; height: 52px; }
+  header { padding-bottom: 6px; }
+}
+/* Relief, surfaces encastrées et commandes mécaniques. */
+main {
+  background:
+    radial-gradient(ellipse at 50% 0, #aa7c382b, transparent 36%),
+    linear-gradient(155deg, #352b20, #1c1711 35%, #100d09 81%);
+  box-shadow: inset 0 1px 1px #f6d28d50, inset 0 -3px 5px #000b, 0 14px 40px #0009;
+}
+header {
+  border-bottom-color: #9f7746;
+  box-shadow: 0 1px #000, 0 4px 8px -6px #e6ac5a;
+  text-shadow: 0 1px #4c3119, 0 3px 6px #000;
+}
+header img {
+  filter: drop-shadow(0 3px 0 #69401f) drop-shadow(0 7px 7px #000b);
+}
+.layout { padding: 0 3px 8px; }
+section {
+  background: linear-gradient(150deg, #342b20 0%, #211a12 43%, #17130e 100%);
+  border-color: #947048;
+  box-shadow: inset 0 1px 0 #ffdfa04a, inset 0 -2px 0 #0008, 0 4px 0 #38261a, 0 6px 8px #0007;
+}
+h2 { text-shadow: 0 2px 3px #000; }
+output, textarea, .note-input {
+  border-color: #856742;
+  background: linear-gradient(170deg, #100d09, #21190f);
+  box-shadow: inset 0 3px 7px #000c, 0 1px 0 #f5ce8238;
+}
+output { color: #ffe09c; text-shadow: 0 2px 5px #000; }
+.entry {
+  background: linear-gradient(155deg, #3a2d1d, #251c12 55%, #18130c);
+  border-color: #8c6943;
+  box-shadow: inset 0 1px 0 #ffdd9440, 0 3px 0 #38271b, 0 5px 7px #0008;
+  margin-bottom: 11px;
+}
+#history { padding-bottom: 7px; }
+button {
+  background:
+    linear-gradient(110deg, transparent 30%, #fff3ba40 48%, transparent 66%),
+    linear-gradient(#ffe7a2, #c99342 54%, #a36e29 55%, #e1aa57);
+  border-color: #ffe5a5;
+  box-shadow: inset 0 1px 0 #fff6ce, 0 3px 0 #5e3b1d, 0 5px 7px #000a;
+  text-shadow: 0 1px #ffeec86b;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+button.secondary, .mobile-nav button {
+  background: linear-gradient(#5a4630, #382b1d 52%, #261b11 53%, #38291b);
+  border-color: #9c754a;
+  box-shadow: inset 0 1px 0 #ffe2ac42, 0 3px 0 #332319, 0 5px 7px #0009;
+  text-shadow: 0 1px 2px #000;
+}
+.mode-nav button[aria-pressed="true"], .mobile-nav button[aria-current="true"] {
+  background: linear-gradient(#4b3825, #231b18);
+  border-color: #f0c06e;
+  color: #ffdfa0;
+  box-shadow: inset 0 2px 5px #000a, 0 1px 0 #e0b37370;
+}
+.entry .delete { background: linear-gradient(#61351f, #2e1a12); }
+button:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 4px #0009, 0 1px 0 #56381f;
+}
+.mobile-nav {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  background: linear-gradient(#2c2319, #110e09);
+  box-shadow: 0 -4px 9px #0005;
+}
+@media (prefers-reduced-motion: reduce) {
+  button { transition: none; }
+}
+header h1 {
+  margin: 0 0 6px;
+  font: 900 clamp(17px, 5.6vw, 27px)/1.1 "Times New Roman", Georgia, serif;
+  letter-spacing: .035em;
+  color: #f8c45a;
+  text-shadow: 0 1px #8f4612, 0 3px #4a250b, 0 5px 7px #000;
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  header h1 {
+    background: linear-gradient(to bottom,
+      #fff1b9 7%, #ffda77 19%, #fff6be 28%, #d79828 43%,
+      #b26613 51%, #ffd35c 64%, #fff0a1 74%, #bd741a 84%, #f9c350 94%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-stroke: .35px #ffd989;
+    text-shadow: none;
+    filter: drop-shadow(0 1px 0 #a05215) drop-shadow(0 2px 0 #5b2c0c) drop-shadow(0 3px 2px #000);
+  }
+}
+header small {
+  font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .19em;
+  color: #efc77f;
+  text-shadow: 0 1px 0 #4d2812, 0 2px 4px #000;
+}
+.entry-top { display: grid; grid-template-columns: minmax(0, 1fr) 96px; }
+.entry-identity { min-width: 0; }
+.entry-logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px #000b);
+}
+.generator-page { flex: 1; min-width: 0; }
+.flip-counter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px;
+}
+#flip-label { color: #efc77f; font-size: 15px; font-weight: 700; }
+.flip-display {
+  position: relative;
+  min-width: 100px;
+  margin: 0;
+  padding: 0 14px;
+  border-radius: 9px;
+  background: linear-gradient(#302519 0 49%, #181108 50% 51%, #241b13 52% 100%);
+  color: #ffe09c;
+  font: 700 40px/60px Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  perspective: 220px;
+}
+.flip-display::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 1px;
+  background: #090603;
+  pointer-events: none;
+}
+.flip-face {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 50%;
+  overflow: hidden;
+  background: #302519;
+  border-radius: 6px 6px 0 0;
+  transform-origin: center bottom;
+  visibility: hidden;
+}
+.flip-clock {
+  flex: 0 0 100%;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+#clock-time { display: flex; align-items: center; justify-content: center; gap: 5px; color: #efc77f; }
+#clock-time .flip-display {
+  min-width: 0;
+  padding: 0 8px;
+  text-align: center;
+  font-size: 29px;
+  line-height: 42px;
+  box-shadow: inset 0 2px 5px #0009, 0 2px 0 #8a63394a;
+}
+#clock-date { color: #efc77f; font: 700 14px Palatino, Georgia, serif; text-align: center; }
+#clock-date::first-letter { text-transform: uppercase; }
+.scan-actions button { flex: 1; }
+@media (max-width: 620px) {
+  header { padding-bottom: 8px; }
+  header img { width: 88px; height: 88px; }
+  .layout { margin-top: 8px; }
+  .layout > .generator-page section { padding: 10px; }
+  .generator-page .mode-nav { margin: 6px 0 8px; }
+  .generator-page label { margin: 5px 0 3px; }
+  .generator-page textarea { min-height: 44px; height: 44px; resize: none; }
+  .generator-page .actions { margin-top: 5px; }
+  .generator-page .flip-counter { margin-top: 9px; gap: 7px; padding: 8px; }
+  .generator-page .flip-clock { padding-top: 6px; gap: 4px; }
+  #flip-count { line-height: 51px; }
+  #clock-time .flip-display { line-height: 36px; }
+  .mobile-nav { padding-top: 6px; }
+}
+.note-input {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 9px;
+  color: inherit;
+  font: 16px system-ui, sans-serif;
+}
+@media (max-width: 620px) and (max-height: 820px) {
+  header img { width: 65px; height: 65px; }
+  header { gap: 3px; padding-bottom: 6px; }
+  header h1 { margin-bottom: 3px; }
+  .generator-page .mode-nav { margin: 5px 0 6px; }
+  .generator-page .flip-counter { margin-top: 7px; }
+  #flip-count { line-height: 45px; }
+  #clock-time .flip-display { line-height: 34px; }
+}
+@media (max-width: 620px) and (min-width: 375px) and (min-height: 725px) {
+  main[data-screen="generator"]:not(:has(:is(input, textarea):focus)) .layout { overflow: clip; }
+}
+</style>
+</head>
+<body>
+<main data-screen="generator" data-mode="automatic">
+  <header><img src="logo-spartiate.png" alt="" width="1254" height="1254"><div><h1>ASM CODE GENERATOR</h1><small>ASM TECHNOLOGIES</small></div></header>
+  <div class="layout">
+    <div class="generator-page" data-panel="generator">
+    <section aria-labelledby="generator-title">
+      <h2 id="generator-title">Générateur de codes</h2>
+      <div class="mode-nav" role="group" aria-label="Mode de saisie">
+        <button type="button" class="secondary" data-mode-target="automatic" aria-pressed="true">Automatique</button>
+        <button type="button" class="secondary" data-mode-target="manual" aria-pressed="false">Manuel</button>
+      </div>
+      <div data-mode-panel="automatic">
+      <output id="current">—</output>
+      <label for="note">Note du code automatique</label>
+      <input class="note-input" id="note" type="text" maxlength="500" placeholder="Ex. Projet ASM">
+      <div class="actions"><button id="generate" type="button">Générer</button><button id="copy" class="secondary" type="button" disabled>Copier le code</button></div>
+      </div>
+      <form id="manual-form" data-mode-panel="manual">
+        <label for="manual-code">Code manuel</label>
+        <div class="manual-row"><textarea id="manual-code" rows="1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="manual-error"></textarea></div>
+        <div class="actions scan-actions">
+          <button id="scan-camera" type="button" class="secondary">Scanner un code</button>
+          <button id="scan-photo" type="button" class="secondary">Depuis une photo</button>
+        </div>
+        <input id="scan-camera-file" type="file" accept="image/*" capture="environment" hidden>
+        <input id="scan-photo-file" type="file" accept="image/*" hidden>
+        <label for="manual-note">Note du code manuel</label>
+        <input class="note-input" id="manual-note" type="text" maxlength="500" placeholder="Ex. Projet ASM">
+        <div class="actions"><button type="submit" class="secondary">Enregistrer</button></div>
+        <p id="manual-error" role="alert"></p>
+      </form>
+    </section>
+      <section class="flip-counter" aria-labelledby="flip-label">
+        <span id="flip-label">Cartes enregistrées</span>
+        <output id="flip-count" class="flip-display" aria-labelledby="flip-label"><span class="flip-value">0</span><span class="flip-face" aria-hidden="true"></span></output>
+        <div class="flip-clock">
+          <time id="clock-time" aria-label="Heure locale">
+            <span class="flip-display" data-clock-part="hours"><span class="flip-value">--</span><span class="flip-face" aria-hidden="true"></span></span>
+            <span aria-hidden="true">:</span>
+            <span class="flip-display" data-clock-part="minutes"><span class="flip-value">--</span><span class="flip-face" aria-hidden="true"></span></span>
+            <span aria-hidden="true">:</span>
+            <span class="flip-display" data-clock-part="seconds"><span class="flip-value">--</span><span class="flip-face" aria-hidden="true"></span></span>
+          </time>
+          <time id="clock-date"></time>
+        </div>
+      </section>
+    </div>
+    <section data-panel="history" aria-labelledby="history-title">
+      <div class="heading"><h2 id="history-title" tabindex="-1">Historique</h2><span class="hint" id="count"></span></div>
+      <div id="history"></div>
+    </section>
+  </div>
+  <p id="status" role="status"></p>
+  <nav class="mobile-nav" aria-label="Navigation du générateur">
+    <button type="button" data-screen-target="generator" aria-current="true">Générateur</button>
+    <button type="button" data-screen-target="history">Historique</button>
+  </nav>
+</main>
+<template id="entry">
+  <article class="entry">
+    <div class="entry-top">
+      <div class="entry-identity"><code></code><time></time></div>
+      <img class="entry-logo" src="logo-spartiate.png" alt="" width="96" height="96">
+    </div>
+    <p class="entry-note"></p>
+    <div class="actions"><button type="button" class="secondary copy">Copier</button><button type="button" class="secondary png">PNG</button><button type="button" class="secondary delete">Supprimer</button></div>
+  </article>
+</template>
+<script src="generator.js?v=18"></script>
+</body>
+</html>

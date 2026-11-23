@@ -1,0 +1,36 @@
+{
+  "name": "asm-code-generator",
+  "version": "1.0.0",
+  "description": "Générateur de codes et gestionnaire de cartes ASM Technologies",
+  "author": "ASM Technologies",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.cjs && node --check generator.js",
+    "dist:win": "electron-builder --win --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.asmtechnologies.codegenerator",
+    "productName": "ASM Code Generator",
+    "directories": { "output": "release" },
+    "files": ["main.cjs", "index.html", "generator.js", "logo-spartiate.png", "vendor/**/*", "build/asm-code-generator.ico"],
+    "win": {
+      "icon": "build/asm-code-generator.ico",
+      "target": ["nsis", "portable"]
+    },
+    "nsis": {
+      "artifactName": "ASM-Code-Generator-Setup-${version}-${arch}.${ext}",
+      "installerIcon": "build/asm-code-generator.ico",
+      "uninstallerIcon": "build/asm-code-generator.ico",
+      "createDesktopShortcut": true
+    },
+    "portable": {
+      "artifactName": "ASM-Code-Generator-Portable-${version}-${arch}.${ext}"
+    }
+  }
+}
